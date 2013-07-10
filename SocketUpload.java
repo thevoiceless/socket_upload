@@ -27,8 +27,6 @@ public class SocketUpload
 		int port = Integer.parseInt(args[2]);
 		String filename = args[3];
 		System.out.println(method + " " + filename + " to " + hostname + ":" + port);
-		// System.out.println("Method is " + method);
-		// System.out.println("Filename is " + filename);
 
 		uploadFile(method, filename, hostname, port);
 	}

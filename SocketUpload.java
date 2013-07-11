@@ -64,7 +64,7 @@ public class SocketUpload
 			// Create the SocketChannel
 			socket = SocketChannel.open();
 			socket.connect(new InetSocketAddress(hostname, port));
-			System.out.println("Connected.\n\nRequest:");
+			System.out.println("Connected.\n\n==== Request ====\n");
 
 			Date today = new Date();
 
@@ -120,15 +120,20 @@ public class SocketUpload
 				socket.write(request);
 			}
 
-			System.out.println("\nDone. Response:");
+			System.out.println("\n== End Request ==");
+			System.out.println("\n==== Response ====\n");
+
 			ByteBuffer response = ByteBuffer.allocate(512);
 			int bytesRead = socket.read(response);
 			while (bytesRead != -1)
 			{
+				response.flip();
 				System.out.print(new String(response.array()));
-				response.clear();
+				Arrays.fill(response.array(), (byte)0);
 				bytesRead = socket.read(response);
 			}
+			System.out.println("\n== End Response ==");
+
 		}
 		catch (Exception e)
 		{

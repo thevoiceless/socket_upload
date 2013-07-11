@@ -2,12 +2,15 @@ import java.nio.channels.SocketChannel;
 import java.nio.ByteBuffer;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.Date;
 
 public class SocketUpload
 {
 	public static final String PUT = "PUT";
 	public static final String POST = "POST";
 	public static final String POST_BOUNDARY = "--------------------fbaf27c439a7d6220a7c6ad2854084fb";
+	private static String awsSignaure = null;
 
 	public static void main(String[] args)
 	{
@@ -22,11 +25,14 @@ public class SocketUpload
 			System.exit(1);
 		}
 
+		awsSignaure = System.getenv("AWS_KEY");
+
 		String method = args[0].toUpperCase();
 		String hostname = args[1];
 		int port = Integer.parseInt(args[2]);
 		String filename = args[3];
 		System.out.println(method + " " + filename + " to " + hostname + ":" + port);
+		System.out.println();
 
 		uploadFile(method, filename, hostname, port);
 	}
@@ -58,15 +64,18 @@ public class SocketUpload
 			// Create the SocketChannel
 			socket = SocketChannel.open();
 			socket.connect(new InetSocketAddress(hostname, port));
+			System.out.println("Connected.\n\nRequest:");
+
+			Date today = new Date();
 
 			// Build the request
 			if (method.equals(PUT))
 			{
-				header = "PUT " 
-					+ fn 
-					+ " HTTP/1.1\r\nContent-Length: " 
-					+ contentBytes.length 
-					+ "\r\n\r\n";
+				header = "PUT " + fn + " HTTP/1.1\r\n"
+					+ "Host: " + hostname + "\r\n"
+					+ "Date: " + today.toString() + "\r\n"
+					+ "Authorization: " + awsSignaure + "\r\n"
+					+ "Content-Length: " + contentBytes.length + "\r\n\r\n";
 				byte[] headerBytes = header.getBytes("UTF-8");
 				
 				request = ByteBuffer.allocate(headerBytes.length + contentBytes.length);
@@ -102,11 +111,23 @@ public class SocketUpload
 				request.put(closingBytes);
 			}
 
+			System.out.println(new String(request.array()));
+
 			// Send the request
 			request.flip();
 			while(request.hasRemaining())
 			{
 				socket.write(request);
+			}
+
+			System.out.println("\nDone. Response:");
+			ByteBuffer response = ByteBuffer.allocate(512);
+			int bytesRead = socket.read(response);
+			while (bytesRead != -1)
+			{
+				System.out.print(new String(response.array()));
+				response.clear();
+				bytesRead = socket.read(response);
 			}
 		}
 		catch (Exception e)

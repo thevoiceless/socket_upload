@@ -1,1 +1,3 @@
 *.class
+*.o
+socket_upload_ssl

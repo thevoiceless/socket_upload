@@ -25,12 +25,12 @@ public class SocketUpload
 			System.exit(1);
 		}
 
-		awsSignaure = System.getenv("AWS_KEY");
-
 		String method = args[0].toUpperCase();
 		String hostname = args[1];
 		int port = Integer.parseInt(args[2]);
 		String filename = args[3];
+		// Set AWS signature if present
+		awsSignaure = System.getenv("AWS_KEY");
 		System.out.println(method + " " + filename + " to " + hostname + ":" + port);
 		System.out.println();
 
@@ -74,8 +74,10 @@ public class SocketUpload
 				header = "PUT " + fn + " HTTP/1.1\r\n"
 					+ "Host: " + hostname + "\r\n"
 					+ "Date: " + today.toString() + "\r\n"
-					+ "Authorization: " + awsSignaure + "\r\n"
-					+ "Content-Length: " + contentBytes.length + "\r\n\r\n";
+					+ "Content-Length: " + contentBytes.length + "\r\n";
+				header += (awsSignaure != null) 
+					? "Authorization: " + awsSignaure + "\r\n\r\n"
+					: "\r\n";
 				byte[] headerBytes = header.getBytes("UTF-8");
 				
 				request = ByteBuffer.allocate(headerBytes.length + contentBytes.length);

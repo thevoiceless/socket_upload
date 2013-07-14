@@ -26,7 +26,7 @@ entropy_context entropy;
 ctr_drbg_context ctr_drbg;
 
 int ret, server_fd;
-unsigned char buf[1024];
+unsigned char buf[1536];
 const char* pers = "ssl_client1";
 
 int finish(int ret)
@@ -50,9 +50,14 @@ int finish(int ret)
 
 vector<char> readAllBytes(const char* filename)
 {
-	ifstream infile(filename, ios::binary|ios::ate);
-	ifstream::pos_type size = infile.tellg();
+	ifstream infile(filename, ios::binary | ios::ate);
+	if (infile.fail())
+	{
+		cout << "Failed to open file " << filename << endl;
+		exit(1);
+	}
 
+	ifstream::pos_type size = infile.tellg();
 	vector<char> result(size);
 
 	infile.seekg(0, ios::beg);
@@ -67,13 +72,9 @@ string currentDateTime()
 	struct tm* tstruct;
 	time(&rawtime);
 	tstruct = gmtime(&rawtime);
-
-	// time_t now = time(0);
-	// struct tm tstruct;
 	char buf[80];
-	// tstruct = *localtime(&now);
 
-	strftime(buf, sizeof(buf), "%a, %d %b %Y %X GMT", tstruct);
+	strftime(buf, sizeof(buf), "%a, %d %b %Y %X +0000", tstruct);
 
 	return buf;
 }
@@ -296,12 +297,12 @@ int main(int argc, char* argv[])
 	{
 		cout << "md5 is " << md5output << endl;
 	}
-	stringToSign << md5output << "\n";
+	stringToSign << /*md5output << */ "\n";
 	stringToSign << "application/octet-stream\n";
 	stringToSign << now << "\n";
 
 	ostringstream cResource;
-	cResource << hostname.substr(0, hostname.find_first_of('.'));
+	cResource << "/" + hostname.substr(0, hostname.find_first_of('.'));
 	cResource << file.substr(spot, string::npos);
 
 	stringToSign << cResource.str();
@@ -317,10 +318,11 @@ int main(int argc, char* argv[])
 
 	ostringstream request;
 	request << "PUT " << file.substr(spot, string::npos) << " HTTP/1.1\r\n";
+	request << "Content-Type: application/octet-stream\r\n";
+	request << "Content-Length: " << fileContents.size() << "\r\n";
 	request << "Host: " << hostname << "\r\n";
-	request << "Date: " << now << "\r\n";
-	request << "Authorization: AWS " << awskey << ":" << base64_encode(sha1hmacoutput, 20) << "\r\n";
-	request << "Content-Length: " << fileContents.length() << "\r\n\r\n";
+	request << "Date: " << now << "\r\n\r\n";
+	request << "Authorization: AWS " << awskey << ":" << base64_encode(sha1hmacoutput, 20) << "\r\n\r\n";
 	request << fileContents;
 	string requestString = request.str();
 	cout << requestString << endl;
@@ -334,13 +336,15 @@ int main(int argc, char* argv[])
 		{
 			cout << " failed" << endl << "  ! ssl_write returned " << ret << endl << endl;
 			finish(ret);
-		} 
+		}
 	}
 
 	cout << ret << " bytes sent" << endl << endl;
+	cout.flush();
 
 	// Read response
 	cout << "  Reading from server...";
+	cout.flush();
 	while (true)
 	{
 		len = sizeof(buf) - 1;

@@ -287,16 +287,16 @@ int main(int argc, char* argv[])
 
 	ostringstream stringToSign;
 	stringToSign << "PUT\n";
-	unsigned char md5output[16];
-	if (md5_file(file.c_str(), md5output) != 0)
-	{
-		cout << "Error calculating MD5" << endl;
-		exit(1);
-	}
-	else
-	{
-		cout << "md5 is " << md5output << endl;
-	}
+	// unsigned char md5output[16];
+	// if (md5_file(file.c_str(), md5output) != 0)
+	// {
+	// 	cout << "Error calculating MD5" << endl;
+	// 	exit(1);
+	// }
+	// else
+	// {
+	// 	cout << "md5 is " << md5output << endl;
+	// }
 	stringToSign << /*md5output << */ "\n";
 	stringToSign << "application/octet-stream\n";
 	stringToSign << now << "\n";
@@ -307,12 +307,12 @@ int main(int argc, char* argv[])
 
 	stringToSign << cResource.str();
 
-	cout << "s2s:\n" << stringToSign.str() << endl << endl;
+	// cout << "s2s:\n" << stringToSign.str() << endl << endl;
 
 	const unsigned char* uawskey = reinterpret_cast<const unsigned char*>(awskey.c_str());
 	const unsigned char* us2s = reinterpret_cast<const unsigned char*>(stringToSign.str().c_str());
-	cout << "uawskey:\n" << uawskey << endl << endl;
-	cout << "us2s:\n" << us2s << endl << endl;
+	// cout << "uawskey:\n" << uawskey << endl << endl;
+	// cout << "us2s:\n" << us2s << endl << endl;
 	unsigned char sha1hmacoutput[20];
 	sha1_hmac(uawskey, awskey.length(), us2s, stringToSign.str().length(), sha1hmacoutput);
 
@@ -323,12 +323,14 @@ int main(int argc, char* argv[])
 	request << "Host: " << hostname << "\r\n";
 	request << "Date: " << now << "\r\n\r\n";
 	request << "Authorization: AWS " << awskey << ":" << base64_encode(sha1hmacoutput, 20) << "\r\n\r\n";
-	request << fileContents;
+
+
+	// request << fileContents;
 	string requestString = request.str();
 	cout << requestString << endl;
 
 	// Send request
-	cout << "  Sending request...";
+	cout << "  Sending request..." << endl;
 	int len = sprintf((char*)buf, requestString.c_str());
 	while ((ret = ssl_write(&ssl, buf, len)) <= 0)
 	{
@@ -339,7 +341,21 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	cout << ret << " bytes sent" << endl << endl;
+	cout << "    " << ret << " header bytes sent" << endl;
+	cout.flush();
+
+	// len = sprintf((char*)buf, fileContents.c_str());
+	const unsigned char* contents = reinterpret_cast<const unsigned char*>(fileContents.c_str());
+	while ((ret = ssl_write(&ssl, contents, fileContents.size())) <= 0)
+	{
+		if (ret != POLARSSL_ERR_NET_WANT_READ && ret != POLARSSL_ERR_NET_WANT_WRITE)
+		{
+			cout << " failed" << endl << "  ! ssl_write returned " << ret << endl << endl;
+			finish(ret);
+		}
+	}
+
+	cout << "    " << ret << " content bytes sent" << endl << endl;
 	cout.flush();
 
 	// Read response

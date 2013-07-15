@@ -343,12 +343,13 @@ int main(int argc, char* argv[])
 	header << "Authorization: AWS " << awskey << ":" << base64_encode(sha1hmacOutput, 20) << "\r\n\r\n";
 
 	string headerString = header.str();
+	// View what will be sent
 	// cout << headerString << endl;
 	// cout << fileContents << endl;
 
 	// Send the request
 	cout << "  . Sending request..." << endl;
-	// Send header first
+	// Send header first...
 	int len = sprintf((char*) buf, headerString.c_str());
 	while ((ret = ssl_write(&ssl, buf, len)) <= 0)
 	{
@@ -360,7 +361,7 @@ int main(int argc, char* argv[])
 	}
 	cout << "  + " << ret << " header bytes sent" << endl;
 	cout.flush();
-	// Then send the contents
+	// ...Then send the contents
 	// For some reason this was necessary to ensure that the entirety of fileContents was sent
 	const unsigned char* contents = reinterpret_cast<const unsigned char*>(fileContents.c_str());
 	while ((ret = ssl_write(&ssl, contents, fileContents.size())) <= 0)

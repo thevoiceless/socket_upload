@@ -349,7 +349,8 @@ int main(int argc, char* argv[])
 	// cout << fileContents << endl;
 
 	// Send the request
-	cout << "  . Sending request..." << endl;
+	cout << "  . Sending request header...";
+	cout.flush();
 	// Send header first...
 	int len = sprintf((char*) buf, headerString.c_str());
 	while ((ret = ssl_write(&ssl, buf, len)) <= 0)
@@ -360,21 +361,35 @@ int main(int argc, char* argv[])
 			finish(ret);
 		}
 	}
-	cout << "  + " << ret << " header bytes sent" << endl;
-	cout.flush();
+	cout << endl << "  + " << ret << " header bytes sent" << endl;
 	// ...Then send the contents
 	// For some reason this was necessary to ensure that the entirety of fileContents was sent
-	const unsigned char* contents = reinterpret_cast<const unsigned char*>(fileBytes);
-	while ((ret = ssl_write(&ssl, contents, numBytes)) <= 0)
-	{
-		if (ret != POLARSSL_ERR_NET_WANT_READ && ret != POLARSSL_ERR_NET_WANT_WRITE)
-		{
-			cout << " failed" << endl << "  ! ssl_write returned " << ret << endl << endl;
-			finish(ret);
-		}
-	}
-	cout << "  + " << ret << " content bytes sent" << endl;
+	// Loop over all data because SSL_MAX_CONTENT_LEN limits the amount of data that can be sent at once
+	cout << "  . Sending request body...";
 	cout.flush();
+	int total = 0;
+	int loops = 0;
+	const unsigned char* contents = reinterpret_cast<const unsigned char*>(fileBytes);
+	// Divide into segments of SSL_MAX_CONTENT_LEN size
+	for (loops; loops < (numBytes / SSL_MAX_CONTENT_LEN) + 1; loops++)
+	{
+		// Offset within the content by loops * SSL_MAX_CONTENT_LEN each time
+		// numBytes will be greater than SSL_MAX_CONTENT_LEN until the last iteration of the loop
+		while ((ret = ssl_write(&ssl, &contents[loops * SSL_MAX_CONTENT_LEN], numBytes - (loops * SSL_MAX_CONTENT_LEN))) <= 0)
+		{
+			if (ret != POLARSSL_ERR_NET_WANT_READ && ret != POLARSSL_ERR_NET_WANT_WRITE)
+			{
+				cout << " failed" << endl << "  ! ssl_write returned " << ret << endl << endl;
+				finish(ret);
+			}
+		}
+		total += ret;
+	}
+	cout << endl << "  + " << total << " content bytes sent in " << loops << " packet(s)" << endl;
+	if (total != numBytes)
+	{
+		cout << "  ! Warning: Number of content bytes sent does not match number of bytes from file" << endl;
+	}
 
 	// Read the response
 	cout << "  . Reading from server...";

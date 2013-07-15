@@ -1,4 +1,4 @@
-POLARSSL = -lpolarssl -I/home/riley/Computer/polarssl-1.2.8/include/polarssl/
+POLARSSL = -lpolarssl
 
 CLASSES = SocketUpload.class
 OBJECTS = socket_upload_ssl.o

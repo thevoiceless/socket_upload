@@ -92,11 +92,10 @@ public class SocketUpload
 				byte[] closingBytes = contentEnd.getBytes("UTF-8");
 
 				// Content-Length must include the POST_BOUNDARY wrapper
-				header = "POST / HTTP/1.1\r\nContent-Length: " 
-					+ (openingBytes.length + contentBytes.length + closingBytes.length)
-					+ "\r\nContent-Type: multipart/form-data; boundary=" 
-					+ POST_BOUNDARY 
-					+ "\r\n\r\n";
+				header = "POST / HTTP/1.1\r\n"
+					+ "Referer: SocketUpload\r\n"
+					+ "Content-Length: "+ (openingBytes.length + contentBytes.length + closingBytes.length)	+ "\r\n"
+					+ "Content-Type: multipart/form-data; boundary=" + POST_BOUNDARY + "\r\n\r\n";
 				byte[] headerBytes = header.getBytes("UTF-8");
 
 				request = ByteBuffer.allocate(headerBytes.length + openingBytes.length + contentBytes.length + closingBytes.length);
@@ -120,8 +119,12 @@ public class SocketUpload
 			System.out.println("\n==== Response ====\n");
 
 			ByteBuffer response = ByteBuffer.allocate(512);
+			if (method.equals(POST))
+			{
+				response.flip();
+			}
 			int bytesRead = socket.read(response);
-			while (bytesRead != -1)
+			while (bytesRead > 0)
 			{
 				response.flip();
 				System.out.print(new String(response.array()));
@@ -129,7 +132,6 @@ public class SocketUpload
 				bytesRead = socket.read(response);
 			}
 			System.out.println("\n== End Response ==");
-
 		}
 		catch (Exception e)
 		{

@@ -57,8 +57,8 @@ int finish(int ret)
 	exit(ret);
 }
 
-// Read all of the bytes from the given file and return them as a vector of characters
-vector<char> readAllBytes(const char* filename)
+// Read all of the bytes from the given file and return them
+char* readAllBytes(const char* filename, int& numBytes)
 {
 	// Open the file in binary mode, starting at the end
 	ifstream infile(filename, ios::binary | ios::ate);
@@ -70,12 +70,12 @@ vector<char> readAllBytes(const char* filename)
 	}
 
 	// The current position is at the end of the file, so tellg() will return its size
-	ifstream::pos_type size = infile.tellg();
-	vector<char> result(size);
+	numBytes = infile.tellg();
+	char* result = new char[numBytes];
 
 	// Return to the beginning of the file and read its contents
 	infile.seekg(0, ios::beg);
-	infile.read(&result[0], size);
+	infile.read(&result[0], numBytes);
 
 	return result;
 }
@@ -293,8 +293,9 @@ int main(int argc, char* argv[])
 		}
 	}
 	// Read all bytes from the file
-	vector<char> fileBytes = readAllBytes(file.c_str());
-	string fileContents(fileBytes.begin(), fileBytes.end());
+	int numBytes = 0;
+	char* fileBytes = readAllBytes(file.c_str(), numBytes);
+	string fileContents(fileBytes);
 
 	// AWS key must be set in an environment variable
 	char* awskey_env = getenv("AWS_KEY");
@@ -336,7 +337,7 @@ int main(int argc, char* argv[])
 	ostringstream header;
 	header << "PUT " << file.substr(spot, string::npos) << " HTTP/1.1\r\n";
 	header << "Content-Type: application/octet-stream\r\n";
-	header << "Content-Length: " << fileContents.size() << "\r\n";
+	header << "Content-Length: " << numBytes << "\r\n";
 	header << "Host: " << hostname << "\r\n";
 	header << "Date: " << now << "\r\n\r\n";
 	// HMAC-SHA1 output must be encoded in base-64
@@ -363,8 +364,8 @@ int main(int argc, char* argv[])
 	cout.flush();
 	// ...Then send the contents
 	// For some reason this was necessary to ensure that the entirety of fileContents was sent
-	const unsigned char* contents = reinterpret_cast<const unsigned char*>(fileContents.c_str());
-	while ((ret = ssl_write(&ssl, contents, fileContents.size())) <= 0)
+	const unsigned char* contents = reinterpret_cast<const unsigned char*>(fileBytes);
+	while ((ret = ssl_write(&ssl, contents, numBytes)) <= 0)
 	{
 		if (ret != POLARSSL_ERR_NET_WANT_READ && ret != POLARSSL_ERR_NET_WANT_WRITE)
 		{
